@@ -90,7 +90,7 @@ export default function CreateMentor() {
                               text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 
                               shadow-sm transition-all duration-200"
                     rows={6}
-                    placeholder="Example: I'm a software engineering student, give me advice for job interviews."
+                    placeholder="Example: I&apos;m a software engineering student, give me advice for job interviews."
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     disabled={isLoading}
@@ -173,7 +173,7 @@ export default function CreateMentor() {
                     </svg>
                   </span>
                   <p className="text-gray-600 dark:text-gray-300">
-                    <strong>Describe a specific challenge</strong> or situation you're facing
+                    <strong>Describe a specific challenge</strong> or situation you&apos;re facing
                   </p>
                 </div>
                 
