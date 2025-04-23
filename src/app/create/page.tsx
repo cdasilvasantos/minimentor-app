@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
 import PageLayout from "@/components/PageLayout";
 
 export default function CreateMentor() {
@@ -53,9 +51,10 @@ export default function CreateMentor() {
       
       // Navigate to the results page
       router.push("/results");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Something went wrong. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -193,7 +192,7 @@ export default function CreateMentor() {
               <div className="mt-8 p-4 bg-white dark:bg-gray-700 rounded-lg shadow-sm">
                 <h4 className="font-medium text-gray-800 dark:text-white mb-2">Example:</h4>
                 <p className="text-gray-600 dark:text-gray-300 italic">
-                  "I'm a junior UX designer in the healthcare industry. I struggle with presenting my design decisions to stakeholders. What techniques can I use to communicate my ideas more effectively?"
+                  {`I'm a junior UX designer in the healthcare industry. I struggle with presenting my design decisions to stakeholders. What techniques can I use to communicate my ideas more effectively?`}
                 </p>
               </div>
             </div>

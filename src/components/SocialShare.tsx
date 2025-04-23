@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 
 interface SocialShareProps {
   advice: string;
   imageUrl: string;
 }
 
-export default function SocialShare({ advice, imageUrl }: SocialShareProps) {
+export default function SocialShare({ advice }: SocialShareProps) {
   const [customMessage, setCustomMessage] = useState("Check out what MiniMentor advised me! I'm on the hunt for jobs right now. #CareerAdvice");
   
   // Prepare content for sharing
