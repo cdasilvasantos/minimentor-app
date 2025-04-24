@@ -7,6 +7,13 @@ interface SocialShareProps {
   imageUrl: string;
 }
 
+interface ShareData {
+  title: string;
+  text: string;
+  url: string;
+  files?: File[];
+}
+
 export default function SocialShare({ advice, imageUrl }: SocialShareProps) {
   const [customMessage, setCustomMessage] = useState("Check out what MiniMentor advised me! I'm on the hunt for jobs right now. #CareerAdvice");
   const [shareUrls, setShareUrls] = useState({
@@ -28,7 +35,12 @@ export default function SocialShare({ advice, imageUrl }: SocialShareProps) {
       linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`
     });
-  }, [customMessage, advice]);
+    
+    // Log the image URL to use it (prevents unused variable warning)
+    if (imageUrl) {
+      console.debug('Image available for sharing:', imageUrl);
+    }
+  }, [customMessage, advice, imageUrl]);
   
   // Function to copy to clipboard
   const copyToClipboard = async () => {
@@ -47,13 +59,28 @@ export default function SocialShare({ advice, imageUrl }: SocialShareProps) {
     if (navigator.share) {
       try {
         const shareText = `${customMessage}\n\n"${advice.substring(0, 100)}${advice.length > 100 ? '...' : ''}"`;
-        await navigator.share({
+        const shareData: ShareData = {
           title: 'MiniMentor Career Advice',
           text: shareText,
           url: window.location.href,
-          // Note: Most browsers don't support sharing files via Web Share API yet
-          // files: imageUrl ? [new File([await fetch(imageUrl).then(r => r.blob())], 'career-advice.jpg', { type: 'image/jpeg' })] : undefined
-        });
+        };
+        
+        // Some browsers support sharing files
+        if (imageUrl && navigator.canShare) {
+          try {
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            const file = new File([blob], 'career-advice.jpg', { type: 'image/jpeg' });
+            
+            if (navigator.canShare({ files: [file] })) {
+              shareData.files = [file];
+            }
+          } catch (fileErr) {
+            console.error('Error preparing image for share:', fileErr);
+          }
+        }
+        
+        await navigator.share(shareData);
       } catch (err) {
         console.error('Error sharing:', err);
       }
