@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import PageLayout from "@/components/PageLayout";
 import { checkAuth, signOut, getUserHistory, User, updateProfile } from "@/utils/authUtils";
 
@@ -83,19 +84,24 @@ export default function Profile() {
       return;
     }
     
+    setLoading(true);
+    setUpdateError("");
+    setUpdateSuccess(false);
+    
     try {
-      const updatedUser = await updateProfile(user.id, { username: newUsername });
-      setUser(updatedUser);
+      await updateProfile(user.id, { username: newUsername });
+      setUser({ ...user, username: newUsername });
       setIsEditing(false);
-      setUpdateError("");
       setUpdateSuccess(true);
       
       // Hide success message after 3 seconds
       setTimeout(() => {
         setUpdateSuccess(false);
       }, 3000);
-    } catch (error: any) {
-      setUpdateError(error.message || "Failed to update profile");
+    } catch (error: unknown) {
+      setUpdateError(error instanceof Error ? error.message : "Failed to update profile");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -224,7 +230,7 @@ export default function Profile() {
             <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-6 flex items-center">
               <span className="text-indigo-600 dark:text-indigo-400 mr-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </span>
               Your MiniMentor History
@@ -232,7 +238,9 @@ export default function Profile() {
 
             {history.length === 0 ? (
               <div className="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg text-center">
-                <p className="text-gray-600 dark:text-gray-400">You haven't created any mentors yet.</p>
+                <p className="text-gray-600 dark:text-gray-400 text-sm mt-2">
+                  You haven&apos;t generated any career advice yet. Go to the create page to get started!
+                </p>
                 <Link href="/create" className="mt-4 inline-block text-indigo-600 dark:text-indigo-400 hover:underline">
                   Create your first MiniMentor
                 </Link>
@@ -242,10 +250,12 @@ export default function Profile() {
                 {history.map((item) => (
                   <div key={item.id} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                     <div className="flex items-start">
-                      <div className="w-16 h-16 rounded-md overflow-hidden flex-shrink-0 mr-4">
-                        <img 
+                      <div className="flex-shrink-0 w-24 h-24 overflow-hidden rounded-lg">
+                        <Image 
                           src={item.imageUrl} 
-                          alt="Mentor thumbnail" 
+                          alt="Career advice illustration" 
+                          width={96}
+                          height={96}
                           className="w-full h-full object-cover"
                         />
                       </div>

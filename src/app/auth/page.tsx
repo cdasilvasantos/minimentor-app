@@ -32,9 +32,8 @@ export default function Auth() {
         await signIn(email, password);
         router.push("/profile");
       }
-    } catch (error: any) {
-      setError(error.message || "Authentication failed");
-    } finally {
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Authentication failed');
       setLoading(false);
     }
   };

@@ -12,6 +12,25 @@ export interface AuthSession {
   expiresAt: number; // timestamp
 }
 
+interface StoredUser {
+  id: string;
+  email: string;
+  password: string;
+  username: string;
+  createdAt: string;
+}
+
+export interface MentorHistoryItem {
+  id: string;
+  created_at: string;
+  prompt: string;
+  advice: string;
+  imageUrl: string;
+  audioUrl: string;
+  imagePrompt: string;
+  [key: string]: string;
+}
+
 // Check if user is authenticated
 export const checkAuth = (): AuthSession | null => {
   if (typeof window === 'undefined') return null;
@@ -51,8 +70,8 @@ export const signIn = (email: string, password: string): Promise<AuthSession> =>
       return;
     }
     
-    const users = JSON.parse(usersStr);
-    const user = users.find((u: any) => u.email === email);
+    const users = JSON.parse(usersStr) as StoredUser[];
+    const user = users.find((u) => u.email === email);
     
     if (!user) {
       reject(new Error('User not found. Please sign up first.'));
@@ -102,20 +121,20 @@ export const signUp = (email: string, password: string, username: string): Promi
     
     // Check if user already exists
     const usersStr = localStorage.getItem('users');
-    const users = usersStr ? JSON.parse(usersStr) : [];
+    const users = usersStr ? JSON.parse(usersStr) as StoredUser[] : [];
     
-    if (users.some((u: any) => u.email === email)) {
+    if (users.some((u) => u.email === email)) {
       reject(new Error('User with this email already exists.'));
       return;
     }
     
-    if (users.some((u: any) => u.username === username)) {
+    if (users.some((u) => u.username === username)) {
       reject(new Error('Username already taken.'));
       return;
     }
     
     // Add new user
-    const newUser = {
+    const newUser: StoredUser = {
       id: userId,
       email,
       password,
@@ -150,8 +169,8 @@ export const updateProfile = (userId: string, updates: { username?: string }): P
       return;
     }
     
-    const users = JSON.parse(usersStr);
-    const userIndex = users.findIndex((u: any) => u.id === userId);
+    const users = JSON.parse(usersStr) as StoredUser[];
+    const userIndex = users.findIndex((u) => u.id === userId);
     
     if (userIndex === -1) {
       reject(new Error('User not found.'));
@@ -160,7 +179,7 @@ export const updateProfile = (userId: string, updates: { username?: string }): P
     
     // Check if username is already taken by another user
     if (updates.username && 
-        users.some((u: any) => u.username === updates.username && u.id !== userId)) {
+        users.some((u) => u.username === updates.username && u.id !== userId)) {
       reject(new Error('Username already taken.'));
       return;
     }
@@ -176,7 +195,7 @@ export const updateProfile = (userId: string, updates: { username?: string }): P
     // Update session if exists
     const sessionStr = localStorage.getItem('userSession');
     if (sessionStr) {
-      const session = JSON.parse(sessionStr);
+      const session = JSON.parse(sessionStr) as AuthSession;
       session.user = {
         ...session.user,
         ...updates
@@ -204,36 +223,44 @@ export const getUser = (): User | null => {
 };
 
 // Save user data to history
-export const saveToHistory = (data: any): void => {
+export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
   const user = getUser();
   if (!user) {
     // For non-authenticated users, save to generic history
-    const history = JSON.parse(localStorage.getItem('mentorHistory') || '[]');
+    const history = JSON.parse(localStorage.getItem('mentorHistory') || '[]') as MentorHistoryItem[];
     history.unshift({
       id: Date.now().toString(),
       created_at: new Date().toISOString(),
-      ...data
+      prompt: data.prompt || '',
+      advice: data.advice || '',
+      imageUrl: data.imageUrl || '',
+      audioUrl: data.audioUrl || '',
+      imagePrompt: data.imagePrompt || ''
     });
     localStorage.setItem('mentorHistory', JSON.stringify(history.slice(0, 10))); // Keep last 10 items
     return;
   }
   
   // For authenticated users, save to user-specific history
-  const userHistory = JSON.parse(localStorage.getItem(`mentorHistory_${user.id}`) || '[]');
+  const userHistory = JSON.parse(localStorage.getItem(`mentorHistory_${user.id}`) || '[]') as MentorHistoryItem[];
   userHistory.unshift({
     id: Date.now().toString(),
     created_at: new Date().toISOString(),
-    ...data
+    prompt: data.prompt || '',
+    advice: data.advice || '',
+    imageUrl: data.imageUrl || '',
+    audioUrl: data.audioUrl || '',
+    imagePrompt: data.imagePrompt || ''
   });
   localStorage.setItem(`mentorHistory_${user.id}`, JSON.stringify(userHistory.slice(0, 20))); // Keep last 20 items
 };
 
 // Get user history
-export const getUserHistory = (): any[] => {
+export const getUserHistory = (): MentorHistoryItem[] => {
   const user = getUser();
   if (!user) {
-    return JSON.parse(localStorage.getItem('mentorHistory') || '[]');
+    return JSON.parse(localStorage.getItem('mentorHistory') || '[]') as MentorHistoryItem[];
   }
   
-  return JSON.parse(localStorage.getItem(`mentorHistory_${user.id}`) || '[]');
+  return JSON.parse(localStorage.getItem(`mentorHistory_${user.id}`) || '[]') as MentorHistoryItem[];
 };
