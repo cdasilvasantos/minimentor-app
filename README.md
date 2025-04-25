@@ -7,12 +7,17 @@ MiniMentor is an AI-powered application that creates personalized career advice 
 - **Text Generation**: Get personalized career advice based on your specific situation using OpenAI's GPT models
 - **Image Creation**: AI-generated images that match your career advice using DALL-E
 - **Audio Narration**: Listen to your advice with high-quality text-to-speech narration
+- **User Authentication**: Create an account with username and email to save your history
+- **Profile Management**: Edit your profile and view your advice history
+- **Mobile-First Design**: Fully responsive interface that works great on all devices
 - **Social Sharing**: Easily share your career advice on LinkedIn, Twitter, Facebook and more with customizable messages
+- **Dark Mode**: Toggle between light and dark themes based on your preference
 
 ## Technologies Used
 
 - **Next.js**: React framework for building the web application
 - **OpenAI API**: For text generation (GPT-4), image creation (DALL-E), and audio narration
+- **LocalStorage**: For user authentication and data persistence
 - **TailwindCSS**: For responsive and modern UI design
 
 ## Getting Started
@@ -23,7 +28,16 @@ First, install the dependencies:
 npm install
 ```
 
-Then, run the development server:
+Then, set up your environment variables:
+
+1. Copy the `.env.example` file to `.env.local`
+2. Add your OpenAI API key
+
+```
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+Finally, run the development server:
 
 ```bash
 npm run dev
@@ -31,18 +45,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-## API Configuration
+## Pages
 
-This project uses the OpenAI API for text, image, and audio generation. To set up the API key:
-
-1. Create a `.env.local` file in the root directory
-2. Add your OpenAI API key to the file:
-   ```
-   OPENAI_API_KEY=your_openai_api_key_here
-   ```
-3. Restart the development server
-
-You can copy the `.env.example` file to get started.
+1. **Home** - Introduction to MiniMentor with example prompts and quick access to create new advice
+2. **Create** - Form to enter your career question and generate personalized advice
+3. **Results** - View your generated advice with image and audio
+4. **Profile** - View your saved advice history and edit your profile information
+5. **Authentication** - Sign up with username/email or sign in to your account
 
 ## How It Works
 
@@ -50,7 +59,26 @@ You can copy the `.env.example` file to get started.
 2. AI generates personalized advice text
 3. DALL-E creates a matching background image
 4. Text-to-speech converts the advice to audio narration
-5. Share your advice on social media platforms with customizable messages
+5. Your advice is saved to your profile (if logged in)
+6. Share your advice on social media platforms with customizable messages
+
+## User Authentication
+
+The app includes a simple but functional authentication system:
+- Create an account with email, username, and password
+- Password visibility toggle for easier input
+- Profile editing capabilities
+- Secure session management
+- View your personalized advice history
+
+## Data Persistence
+
+All data is stored in the browser's localStorage:
+- User authentication (email/username/password)
+- User profiles and preferences
+- Advice history (text, images, audio)
+
+This approach allows the app to function without a backend database while still providing a personalized experience.
 
 ## Learn More
 

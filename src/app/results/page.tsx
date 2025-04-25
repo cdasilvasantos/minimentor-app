@@ -1,26 +1,46 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import PageLayout from "@/components/PageLayout";
 import SocialShare from "@/components/SocialShare";
+import { getUserHistory } from "@/utils/authUtils";
 
 interface MentorData {
+  id?: string;
+  prompt?: string;
   advice: string;
   imageUrl: string;
   audioUrl: string;
   imagePrompt?: string;
+  created_at?: string;
 }
 
 export default function Results() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mentorData, setMentorData] = useState<MentorData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Retrieve the generated content from localStorage
+    // Check if we're viewing a specific result from history
+    const resultId = searchParams.get("id");
+    
+    if (resultId) {
+      // Get the result from history
+      const history = getUserHistory();
+      const result = history.find(item => item.id === resultId);
+      
+      if (result) {
+        setMentorData(result);
+        setIsLoading(false);
+        return;
+      }
+    }
+    
+    // Otherwise, retrieve the most recently generated content from localStorage
     const storedData = localStorage.getItem("mentorData");
     
     if (!storedData) {
@@ -37,7 +57,7 @@ export default function Results() {
     } finally {
       setIsLoading(false);
     }
-  }, [router]);
+  }, [router, searchParams]);
   
   if (isLoading) {
     return (
@@ -68,6 +88,11 @@ export default function Results() {
             </span>
             Your Career Advice
           </h2>
+          {mentorData.prompt && (
+            <p className="text-lg text-gray-600 dark:text-gray-300 ml-12">
+              <span className="font-medium">Question:</span> {mentorData.prompt}
+            </p>
+          )}
         </div>
         
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden mb-8">
@@ -141,6 +166,12 @@ export default function Results() {
                 </p>
               </div>
             )}
+            
+            {mentorData.created_at && (
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+                Created on: {new Date(mentorData.created_at).toLocaleDateString()}
+              </div>
+            )}
           </div>
         </div>
 
@@ -158,13 +189,13 @@ export default function Results() {
               Create Another
             </button>
           </Link>
-          <Link href="/" className="flex-1">
+          <Link href="/profile" className="flex-1">
             <button className="w-full border-2 border-indigo-600 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 
                              font-medium py-4 px-6 rounded-lg transition duration-300 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
               </svg>
-              Back to Home
+              View Profile
             </button>
           </Link>
         </div>
