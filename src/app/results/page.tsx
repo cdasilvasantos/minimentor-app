@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -24,6 +24,8 @@ function ResultsContent() {
   const searchParams = useSearchParams();
   const [mentorData, setMentorData] = useState<MentorData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   
   useEffect(() => {
     // Check if we're viewing a specific result from history
@@ -59,6 +61,38 @@ function ResultsContent() {
       setIsLoading(false);
     }
   }, [router, searchParams]);
+
+  useEffect(() => {
+    // Initialize audio element when mentorData is available
+    if (mentorData?.audioUrl && typeof window !== 'undefined') {
+      audioRef.current = new Audio(mentorData.audioUrl);
+      
+      // Add event listeners
+      audioRef.current.addEventListener('ended', () => setIsPlaying(false));
+      audioRef.current.addEventListener('pause', () => setIsPlaying(false));
+      audioRef.current.addEventListener('play', () => setIsPlaying(true));
+      
+      // Cleanup
+      return () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.removeEventListener('ended', () => setIsPlaying(false));
+          audioRef.current.removeEventListener('pause', () => setIsPlaying(false));
+          audioRef.current.removeEventListener('play', () => setIsPlaying(true));
+        }
+      };
+    }
+  }, [mentorData]);
+  
+  const toggleAudio = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+  };
   
   if (isLoading) {
     return (
@@ -113,42 +147,55 @@ function ResultsContent() {
         
         <div className="p-6 md:p-8">
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 p-6 rounded-xl shadow-sm mb-6">
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
-              <span className="text-indigo-600 dark:text-indigo-400 mr-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-                </svg>
-              </span>
-              Career Advice
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-indigo-600 dark:text-indigo-400 mr-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                </span>
+                Career Advice
+              </div>
+              {mentorData.audioUrl && (
+                <button 
+                  onClick={toggleAudio}
+                  className={`flex items-center px-3 py-1.5 rounded-full transition-all duration-300 text-sm ${
+                    isPlaying 
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white' 
+                      : 'bg-white dark:bg-gray-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                  } border ${isPlaying ? 'border-indigo-600' : 'border-indigo-200 dark:border-indigo-800'} shadow-md hover:shadow-lg transform hover:-translate-y-0.5`}
+                  aria-label={isPlaying ? "Pause audio narration" : "Play audio narration"}
+                >
+                  {isPlaying ? (
+                    <div className="flex items-center">
+                      <div className="flex items-end space-x-0.5 mr-2 h-3">
+                        <div className="w-0.5 bg-white dark:bg-white rounded-full animate-[soundbar_0.5s_ease-in-out_infinite_alternate]"></div>
+                        <div className="w-0.5 bg-white dark:bg-white rounded-full animate-[soundbar_0.5s_ease-in-out_infinite_alternate_0.2s]"></div>
+                        <div className="w-0.5 bg-white dark:bg-white rounded-full animate-[soundbar_0.5s_ease-in-out_infinite_alternate_0.3s]"></div>
+                        <div className="w-0.5 bg-white dark:bg-white rounded-full animate-[soundbar_0.5s_ease-in-out_infinite_alternate_0.4s]"></div>
+                      </div>
+                      <span className="font-medium">Playing</span>
+                      <span className="relative flex h-2 w-2 ml-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                      </svg>
+                      <span className="font-medium">Listen</span>
+                    </div>
+                  )}
+                </button>
+              )}
             </h3>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">
               {mentorData.advice}
             </p>
           </div>
           
-          {mentorData.audioUrl && (
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
-                <span className="text-indigo-600 dark:text-indigo-400 mr-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
-                  </svg>
-                </span>
-                Audio Narration
-              </h3>
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                <audio 
-                  controls 
-                  className="w-full"
-                  src={mentorData.audioUrl}
-                  preload="auto"
-                >
-                  Your browser does not support the audio element.
-                </audio>
-              </div>
-            </div>
-          )}
-
           {mentorData.imagePrompt && (
             <div className="mb-6">
               <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
