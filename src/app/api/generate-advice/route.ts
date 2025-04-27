@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { prompt } = await request.json();
+    const { prompt, generateVisual = true, generateAudio = true } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -23,11 +23,19 @@ export async function POST(request: Request) {
     // Step 1: Generate advice text and image concept
     const { advice, imagePrompt } = await generateAdviceAndImageConcept(prompt);
 
-    // Step 2: Generate image using DALL-E
-    const imageUrl = await generateImage(imagePrompt);
+    // Initialize optional content
+    let imageUrl = '';
+    let audioUrl = '';
 
-    // Step 3: Generate audio narration
-    const audioUrl = await generateAudioNarration(advice);
+    // Step 2: Generate image using DALL-E (if requested)
+    if (generateVisual) {
+      imageUrl = await generateImage(imagePrompt);
+    }
+
+    // Step 3: Generate audio narration (if requested)
+    if (generateAudio) {
+      audioUrl = await generateAudioNarration(advice);
+    }
 
     // Return all generated content
     return NextResponse.json({

@@ -224,11 +224,16 @@ export const getUser = (): User | null => {
 
 // Save user data to history
 export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
-  const user = getUser();
-  if (!user) {
-    // For non-authenticated users, save to generic history
-    const history = JSON.parse(localStorage.getItem('mentorHistory') || '[]') as MentorHistoryItem[];
-    history.unshift({
+  try {
+    const user = getUser();
+    const historyKey = user ? `mentorHistory_${user.id}` : 'mentorHistory';
+    const maxItems = user ? 20 : 10; // Keep more items for authenticated users
+    
+    // Get existing history
+    const history = JSON.parse(localStorage.getItem(historyKey) || '[]') as MentorHistoryItem[];
+    
+    // Create new history item
+    const newItem: MentorHistoryItem = {
       id: Date.now().toString(),
       created_at: new Date().toISOString(),
       prompt: data.prompt || '',
@@ -236,23 +241,96 @@ export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
       imageUrl: data.imageUrl || '',
       audioUrl: data.audioUrl || '',
       imagePrompt: data.imagePrompt || ''
-    });
-    localStorage.setItem('mentorHistory', JSON.stringify(history.slice(0, 10))); // Keep last 10 items
-    return;
+    };
+    
+    // Try to save with the new item
+    try {
+      // Add new item at the beginning
+      history.unshift(newItem);
+      
+      // Keep only the most recent items
+      const trimmedHistory = history.slice(0, maxItems);
+      
+      // Try to save
+      localStorage.setItem(historyKey, JSON.stringify(trimmedHistory));
+    } catch (storageError) {
+      console.warn('Storage quota exceeded, reducing data size...');
+      
+      // If we hit quota limits, we need to reduce data size
+      
+      // First try: Remove audio data from older items (it's usually the largest)
+      const reducedHistory = history.map((item, index) => {
+        // Keep audio only for the newest 3 items
+        if (index >= 3) {
+          return { ...item, audioUrl: '' };
+        }
+        return item;
+      });
+      
+      try {
+        localStorage.setItem(historyKey, JSON.stringify(reducedHistory.slice(0, maxItems)));
+      } catch (secondError) {
+        // Second try: Remove image data from older items too
+        const minimalHistory = reducedHistory.map((item, index) => {
+          // Keep images only for the newest 5 items
+          if (index >= 5) {
+            return { ...item, imageUrl: '', audioUrl: '' };
+          }
+          return item;
+        });
+        
+        try {
+          localStorage.setItem(historyKey, JSON.stringify(minimalHistory.slice(0, maxItems)));
+        } catch (thirdError) {
+          // Last resort: Keep only the most essential data and fewer items
+          const essentialHistory = minimalHistory
+            .slice(0, Math.max(5, Math.floor(maxItems / 2))) // Keep fewer items
+            .map(item => ({
+              id: item.id,
+              created_at: item.created_at,
+              prompt: item.prompt,
+              advice: item.advice.substring(0, 500), // Truncate long advice text
+              imageUrl: '',
+              audioUrl: '',
+              imagePrompt: ''
+            }));
+          
+          // Add the new item with minimal data
+          essentialHistory.unshift({
+            id: newItem.id,
+            created_at: newItem.created_at,
+            prompt: newItem.prompt,
+            advice: newItem.advice.substring(0, 500), // Truncate advice
+            imageUrl: '', // Don't store the image
+            audioUrl: '', // Don't store the audio
+            imagePrompt: ''
+          });
+          
+          localStorage.setItem(historyKey, JSON.stringify(essentialHistory));
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error saving to history:', error);
+    // If all else fails, clear history and save only the new item with minimal data
+    try {
+      const user = getUser();
+      const minimalItem = {
+        id: Date.now().toString(),
+        created_at: new Date().toISOString(),
+        prompt: data.prompt || '',
+        advice: (data.advice || '').substring(0, 300), // Very short advice only
+        imageUrl: '',
+        audioUrl: '',
+        imagePrompt: ''
+      };
+      localStorage.setItem(user ? `mentorHistory_${user.id}` : 'mentorHistory', JSON.stringify([minimalItem]));
+    } catch (finalError) {
+      // If we still can't save, clear all localStorage and inform the user
+      localStorage.clear();
+      alert('Storage limit reached. Your history has been cleared to allow new content to be saved.');
+    }
   }
-  
-  // For authenticated users, save to user-specific history
-  const userHistory = JSON.parse(localStorage.getItem(`mentorHistory_${user.id}`) || '[]') as MentorHistoryItem[];
-  userHistory.unshift({
-    id: Date.now().toString(),
-    created_at: new Date().toISOString(),
-    prompt: data.prompt || '',
-    advice: data.advice || '',
-    imageUrl: data.imageUrl || '',
-    audioUrl: data.audioUrl || '',
-    imagePrompt: data.imagePrompt || ''
-  });
-  localStorage.setItem(`mentorHistory_${user.id}`, JSON.stringify(userHistory.slice(0, 20))); // Keep last 20 items
 };
 
 // Get user history

@@ -13,6 +13,8 @@ function CreateMentorForm() {
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [generateVisual, setGenerateVisual] = useState(true);
+  const [generateAudio, setGenerateAudio] = useState(true);
   
   // Get prompt from URL if available
   useEffect(() => {
@@ -39,7 +41,11 @@ function CreateMentorForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt,
+          generateVisual,
+          generateAudio
+        }),
       });
       
       if (!response.ok) {
@@ -50,16 +56,57 @@ function CreateMentorForm() {
       const data = await response.json();
       
       // Store the generated content in localStorage to pass to the next page
-      localStorage.setItem("mentorData", JSON.stringify(data));
-      
-      // Also save to user history
-      saveToHistory({
-        prompt,
-        advice: data.advice,
-        imageUrl: data.imageUrl,
-        audioUrl: data.audioUrl,
-        imagePrompt: data.imagePrompt
-      });
+      try {
+        // Try to store the full data first
+        localStorage.setItem("mentorData", JSON.stringify(data));
+        
+        // Also save to user history
+        saveToHistory({
+          prompt,
+          advice: data.advice,
+          imageUrl: data.imageUrl,
+          audioUrl: data.audioUrl,
+          imagePrompt: data.imagePrompt
+        });
+      } catch (storageError) {
+        console.warn("Storage quota exceeded when saving full data", storageError);
+        
+        // If we hit storage limits, try storing without the audio (usually the largest part)
+        try {
+          const reducedData = {
+            ...data,
+            audioUrl: "" // Don't store the audio in localStorage
+          };
+          
+          localStorage.setItem("mentorData", JSON.stringify(reducedData));
+          
+          // Save to history with reduced data
+          saveToHistory({
+            prompt,
+            advice: data.advice,
+            imageUrl: data.imageUrl,
+            audioUrl: "", // Skip audio in history
+            imagePrompt: data.imagePrompt
+          });
+          
+          // Set a flag to indicate audio was generated but not stored
+          localStorage.setItem("audioGeneratedButNotStored", "true");
+        } catch (secondError) {
+          console.warn("Storage still exceeded with reduced data", secondError);
+          
+          // Last resort: Store only the essential data
+          const essentialData = {
+            advice: data.advice,
+            prompt: prompt,
+            // No media content
+          };
+          
+          localStorage.setItem("mentorData", JSON.stringify(essentialData));
+          
+          // Set a flag to indicate we're in minimal data mode
+          localStorage.setItem("minimalDataMode", "true");
+        }
+      }
       
       // Navigate to the results page
       router.push("/results");
@@ -92,7 +139,7 @@ function CreateMentorForm() {
                 htmlFor="prompt" 
                 className="block text-gray-700 dark:text-gray-300 font-medium mb-2"
               >
-                What career advice are you looking for?
+                What specific career question or challenge can I help with?
               </label>
               <textarea
                 id="prompt"
@@ -100,14 +147,46 @@ function CreateMentorForm() {
                           text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 
                           shadow-sm transition-all duration-200"
                 rows={6}
-                placeholder="Example: I&apos;m a software engineering student, give me advice for job interviews."
+                placeholder="Examples: How do I prepare for a software engineering interview? What skills should I develop to transition into UX design? How can I negotiate a higher salary?"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 disabled={isLoading}
               ></textarea>
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                Be specific about your career situation, challenges, or goals.
+                Be specific about your career situation, challenges, or goals for a personalized mini action plan.
               </p>
+            </div>
+            
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-700 dark:text-gray-300">Optional Enhancements:</h4>
+              
+              <div className="flex items-center">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={generateVisual}
+                    onChange={() => setGenerateVisual(!generateVisual)}
+                    disabled={isLoading}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                  <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">Generate Visual Infographic</span>
+                </label>
+              </div>
+              
+              <div className="flex items-center">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={generateAudio}
+                    onChange={() => setGenerateAudio(!generateAudio)}
+                    disabled={isLoading}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                  <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">Generate Audio Narration</span>
+                </label>
+              </div>
             </div>
             
             {error && (
@@ -152,9 +231,9 @@ function CreateMentorForm() {
                 </svg>
               </div>
               <div>
-                <h4 className="text-md font-medium text-gray-800 dark:text-white mb-1">AI-Generated Text</h4>
+                <h4 className="text-md font-medium text-gray-800 dark:text-white mb-1">Personalized Mini Action Plan</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Our AI analyzes your question and creates personalized career advice tailored to your situation.
+                  Our AI analyzes your specific career question and creates a personalized mini action plan with concrete steps and resources.
                 </p>
               </div>
             </div>
@@ -166,9 +245,9 @@ function CreateMentorForm() {
                 </svg>
               </div>
               <div>
-                <h4 className="text-md font-medium text-gray-800 dark:text-white mb-1">Custom Imagery</h4>
+                <h4 className="text-md font-medium text-gray-800 dark:text-white mb-1">Visual Infographic</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  DALL·E creates a unique image that visually represents your career advice.
+                  DALL·E creates a helpful infographic that visualizes your action steps and key advice points.
                 </p>
               </div>
             </div>
@@ -182,7 +261,7 @@ function CreateMentorForm() {
               <div>
                 <h4 className="text-md font-medium text-gray-800 dark:text-white mb-1">Audio Narration</h4>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your advice is converted to speech so you can listen to it anytime.
+                  Your advice is converted to speech so you can listen to your action plan anytime.
                 </p>
               </div>
             </div>
@@ -191,10 +270,11 @@ function CreateMentorForm() {
           <div className="mt-6 pt-6 border-t border-indigo-100 dark:border-indigo-900/30">
             <h4 className="text-md font-medium text-gray-800 dark:text-white mb-3">Tips for Better Results:</h4>
             <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-2">
-              <li>Be specific about your career field or industry</li>
-              <li>Mention your experience level or career stage</li>
-              <li>Include any specific challenges you're facing</li>
-              <li>Ask about concrete next steps or actionable advice</li>
+              <li>Ask specific questions about your career challenges</li>
+              <li>Mention your experience level and career stage</li>
+              <li>Include your industry or desired field</li>
+              <li>Request specific types of advice (e.g., "How to network in tech")</li>
+              <li>Ask for resources or tools related to your goals</li>
             </ul>
           </div>
         </div>

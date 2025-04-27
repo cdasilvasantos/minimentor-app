@@ -25,6 +25,7 @@ function ResultsContent() {
   const [mentorData, setMentorData] = useState<MentorData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   useEffect(() => {
@@ -53,6 +54,25 @@ function ResultsContent() {
     
     try {
       const data = JSON.parse(storedData);
+      
+      // Check if we're in minimal data mode
+      const isMinimalMode = localStorage.getItem("minimalDataMode") === "true";
+      if (isMinimalMode) {
+        // Show a notification that some content couldn't be stored
+        setError("Due to storage limitations, images and audio couldn't be saved. Only the text advice is available.");
+        // Clear the flag
+        localStorage.removeItem("minimalDataMode");
+      }
+      
+      // Check if audio was generated but not stored
+      const audioGeneratedButNotStored = localStorage.getItem("audioGeneratedButNotStored") === "true";
+      if (audioGeneratedButNotStored) {
+        // Show a notification that audio couldn't be stored
+        setError("Due to storage limitations, the audio narration couldn't be saved.");
+        // Clear the flag
+        localStorage.removeItem("audioGeneratedButNotStored");
+      }
+      
       setMentorData(data);
     } catch (err) {
       console.error("Failed to parse mentor data:", err);
@@ -94,6 +114,65 @@ function ResultsContent() {
     }
   };
   
+  const renderAdviceWithFormatting = (advice: string) => {
+    if (!advice) return null;
+    
+    // Process the advice text to handle markdown formatting
+    const processedAdvice = advice
+      // Replace markdown headers (###) with styled headers
+      .replace(/^### (.*$)/gm, '<h3 class="text-xl font-semibold text-indigo-700 dark:text-indigo-300 mt-6 mb-3">$1</h3>')
+      // Replace markdown headers (##) with styled headers
+      .replace(/^## (.*$)/gm, '<h2 class="text-2xl font-semibold text-indigo-700 dark:text-indigo-300 mt-6 mb-3">$1</h2>')
+      // Replace markdown headers (#) with styled headers
+      .replace(/^# (.*$)/gm, '<h1 class="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mt-6 mb-4">$1</h1>')
+      // Replace bold text (**text**) with styled bold text
+      .replace(/\*\*(.*?)\*\*/g, '<span class="font-bold">$1</span>')
+      // Replace italic text (*text*) with styled italic text
+      .replace(/\*(.*?)\*/g, '<span class="italic">$1</span>')
+      // Replace numbered lists (1. item) with styled lists
+      .replace(/^(\d+)\.\s+(.*$)/gm, '<div class="flex items-start mb-2"><span class="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 w-6 h-6 rounded-full flex items-center justify-center mr-2 flex-shrink-0">$1</span><span>$2</span></div>')
+      // Replace bullet points (* item or - item) with styled lists
+      .replace(/^[\*\-]\s+(.*$)/gm, '<div class="flex items-start mb-2"><span class="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 w-2 h-2 rounded-full mr-2 mt-2 flex-shrink-0"></span><span>$1</span></div>');
+    
+    // Split by double newlines to separate paragraphs
+    const paragraphs = processedAdvice.split('\n\n');
+    
+    return (
+      <div className="space-y-4">
+        {paragraphs.map((paragraph, index) => {
+          // If the paragraph contains HTML (from our replacements above)
+          if (paragraph.includes('<h1') || 
+              paragraph.includes('<h2') || 
+              paragraph.includes('<h3') || 
+              paragraph.includes('<span') || 
+              paragraph.includes('<div')) {
+            return (
+              <div 
+                key={index} 
+                dangerouslySetInnerHTML={{ __html: paragraph }}
+                className="text-gray-700 dark:text-gray-300 leading-relaxed"
+              />
+            );
+          }
+          
+          // Regular paragraph
+          if (paragraph.trim()) {
+            return (
+              <p 
+                key={index} 
+                className="text-gray-700 dark:text-gray-300 leading-relaxed"
+              >
+                {paragraph}
+              </p>
+            );
+          }
+          
+          return null;
+        })}
+      </div>
+    );
+  };
+  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -125,25 +204,27 @@ function ResultsContent() {
             <span className="font-medium">Question:</span> {mentorData.prompt}
           </p>
         )}
+        
+        {error && (
+          <div className="ml-12 mt-2 p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
       </div>
       
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden mb-8">
-        <div className="relative w-full h-72 md:h-96 overflow-hidden">
-          {mentorData.imageUrl ? (
+        {mentorData.imageUrl && (
+          <div className="relative w-full h-72 md:h-96 overflow-hidden">
             <Image 
               src={mentorData.imageUrl} 
-              alt="Generated career advice image"
+              alt="Generated career advice infographic"
               fill
               style={{ objectFit: "cover" }}
               className="transition-all duration-700 hover:scale-105"
               priority
             />
-          ) : (
-            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-              <p className="text-gray-500 dark:text-gray-400">Image not available</p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
         
         <div className="p-6 md:p-8">
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 p-6 rounded-xl shadow-sm mb-6">
@@ -154,7 +235,7 @@ function ResultsContent() {
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                   </svg>
                 </span>
-                Career Advice
+                Your Mini Action Plan
               </div>
               {mentorData.audioUrl && (
                 <button 
@@ -191,9 +272,9 @@ function ResultsContent() {
                 </button>
               )}
             </h3>
-            <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">
-              {mentorData.advice}
-            </p>
+            <div className="prose prose-indigo dark:prose-invert max-w-none">
+              {renderAdviceWithFormatting(mentorData.advice)}
+            </div>
           </div>
           
           {mentorData.imagePrompt && (
@@ -229,7 +310,7 @@ function ResultsContent() {
                           text-white font-medium py-4 px-6 rounded-lg shadow-md hover:shadow-lg 
                           transition duration-300 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
             </svg>
             Create Another
           </button>

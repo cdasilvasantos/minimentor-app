@@ -12,7 +12,9 @@ interface MentorHistory {
   created_at: string;
   prompt: string;
   advice: string;
-  imageUrl: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  imagePrompt?: string;
 }
 
 export default function Profile() {
@@ -233,7 +235,7 @@ export default function Profile() {
                   <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </span>
-              Your MiniMentor History
+              Your Action Plan History
             </h3>
 
             {history.length === 0 ? (
@@ -242,40 +244,80 @@ export default function Profile() {
                   You haven&apos;t generated any career advice yet. Go to the create page to get started!
                 </p>
                 <Link href="/create" className="mt-4 inline-block text-indigo-600 dark:text-indigo-400 hover:underline">
-                  Create your first MiniMentor
+                  Create your first action plan
                 </Link>
               </div>
             ) : (
               <div className="space-y-4">
                 {history.map((item) => (
-                  <div key={item.id} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 w-24 h-24 overflow-hidden rounded-lg">
-                        <Image 
-                          src={item.imageUrl} 
-                          alt="Career advice illustration" 
-                          width={96}
-                          height={96}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                  <div key={item.id} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg hover:shadow-md transition-shadow duration-300">
+                    <div className="flex items-start gap-4">
+                      {item.imageUrl ? (
+                        <div className="flex-shrink-0 w-24 h-24 overflow-hidden rounded-lg">
+                          <Image 
+                            src={item.imageUrl} 
+                            alt="Career advice infographic" 
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-lg flex items-center justify-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                      )}
                       <div className="flex-1">
-                        <p className="text-gray-800 dark:text-white font-medium mb-1 line-clamp-1">
-                          {item.prompt}
-                        </p>
-                        <p className="text-gray-600 dark:text-gray-400 text-sm mb-2 line-clamp-2">
-                          {item.advice}
-                        </p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-gray-500 dark:text-gray-500">
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="text-gray-800 dark:text-white font-medium line-clamp-1">
+                            {item.prompt}
+                          </h4>
+                          <span className="text-xs text-gray-500 dark:text-gray-500 whitespace-nowrap ml-2">
                             {new Date(item.created_at).toLocaleDateString()}
                           </span>
+                        </div>
+                        
+                        <div className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">
+                          {/* Display only the first paragraph of advice, removing markdown formatting */}
+                          {item.advice && typeof item.advice === 'string' 
+                            ? (item.advice.split('\n\n')[0] || '')
+                                .replace(/^#+\s+/g, '') // Remove markdown headers (###, ##, #)
+                                .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markers but keep the text
+                                .replace(/\*(.*?)\*/g, '$1') // Remove italic markers but keep the text
+                            : 'Career advice'
+                          }
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 items-center">
                           <Link 
                             href={`/results?id=${item.id}`}
-                            className="text-indigo-600 dark:text-indigo-400 text-sm hover:underline"
+                            className="text-indigo-600 dark:text-indigo-400 text-sm hover:underline flex items-center"
                           >
-                            View Details
+                            <span>View Full Plan</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
                           </Link>
+                          
+                          {item.audioUrl && (
+                            <span className="text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-1 rounded-full flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
+                              </svg>
+                              Audio
+                            </span>
+                          )}
+                          
+                          {item.imageUrl && (
+                            <span className="text-xs text-indigo-500 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-1 rounded-full flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                              </svg>
+                              Visual
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -292,7 +334,7 @@ export default function Profile() {
                               text-white font-medium py-4 px-6 rounded-xl shadow-lg hover:shadow-xl 
                               transition duration-300 transform hover:-translate-y-1 
                               flex items-center justify-center">
-              <span className="mr-2 text-lg">Create New MiniMentor</span>
+              <span className="mr-2 text-lg">Create New Action Plan</span>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
