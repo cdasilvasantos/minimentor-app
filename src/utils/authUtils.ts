@@ -28,7 +28,8 @@ export interface MentorHistoryItem {
   imageUrl: string;
   audioUrl: string;
   imagePrompt: string;
-  [key: string]: string;
+  conversationId?: string;
+  [key: string]: string | undefined;
 }
 
 // Check if user is authenticated
@@ -222,19 +223,43 @@ export const getUser = (): User | null => {
   return session?.user || null;
 };
 
-// Save user data to history
-export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
+// Generate a unique ID (combination of timestamp and random string)
+const generateUniqueId = () => {
+  return `${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+};
+
+// Interface for chat conversation history
+export interface ChatConversation {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  title: string;
+  userField?: string;
+  messages: {
+    type: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+    imageUrl?: string;
+    audioUrl?: string;
+    imagePrompt?: string;
+  }[];
+}
+
+// Save chat conversation to history
+export const saveToHistory = (data: Partial<MentorHistoryItem>, allMessages?: any[]): void => {
   try {
     const user = getUser();
     const historyKey = user ? `mentorHistory_${user.id}` : 'mentorHistory';
+    const chatHistoryKey = user ? `chatHistory_${user.id}` : 'chatHistory';
     const maxItems = user ? 20 : 10; // Keep more items for authenticated users
     
     // Get existing history
     const history = JSON.parse(localStorage.getItem(historyKey) || '[]') as MentorHistoryItem[];
+    const chatHistory = JSON.parse(localStorage.getItem(chatHistoryKey) || '[]') as ChatConversation[];
     
-    // Create new history item
+    // Create new history item for backward compatibility
     const newItem: MentorHistoryItem = {
-      id: Date.now().toString(),
+      id: generateUniqueId(),
       created_at: new Date().toISOString(),
       prompt: data.prompt || '',
       advice: data.advice || '',
@@ -245,14 +270,72 @@ export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
     
     // Try to save with the new item
     try {
-      // Add new item at the beginning
+      // Add new item at the beginning for backward compatibility
       history.unshift(newItem);
       
       // Keep only the most recent items
       const trimmedHistory = history.slice(0, maxItems);
       
-      // Try to save
+      // Save the traditional history for backward compatibility
       localStorage.setItem(historyKey, JSON.stringify(trimmedHistory));
+      
+      // If we have all messages, save the entire conversation
+      if (allMessages && allMessages.length > 0) {
+        // Check if we already have a conversation with this ID
+        const conversationId = data.conversationId || generateUniqueId();
+        const existingConversationIndex = chatHistory.findIndex(c => c.id === conversationId);
+        
+        if (existingConversationIndex >= 0) {
+          // Update existing conversation
+          chatHistory[existingConversationIndex].updated_at = new Date().toISOString();
+          // Update title if provided
+          if (data.title) {
+            chatHistory[existingConversationIndex].title = data.title;
+          }
+          // Update userField if provided
+          if (data.userField) {
+            chatHistory[existingConversationIndex].userField = data.userField;
+          }
+          // Save all messages with proper timestamp handling
+          chatHistory[existingConversationIndex].messages = allMessages.map(m => ({
+            type: m.type,
+            content: m.content,
+            timestamp: m.timestamp ? 
+              (typeof m.timestamp === 'string' ? m.timestamp : m.timestamp.toISOString()) : 
+              new Date().toISOString(),
+            imageUrl: m.imageUrl || '',
+            audioUrl: m.audioUrl || '',
+            imagePrompt: m.imagePrompt || ''
+          }));
+        } else {
+          // Create new conversation
+          const newConversation: ChatConversation = {
+            id: conversationId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            title: data.title || data.prompt?.substring(0, 50) + '...' || 'Chat conversation',
+            userField: data.userField,
+            messages: allMessages.map(m => ({
+              type: m.type,
+              content: m.content,
+              timestamp: m.timestamp ? 
+                (typeof m.timestamp === 'string' ? m.timestamp : m.timestamp.toISOString()) : 
+                new Date().toISOString(),
+              imageUrl: m.imageUrl || '',
+              audioUrl: m.audioUrl || '',
+              imagePrompt: m.imagePrompt || ''
+            }))
+          };
+          
+          chatHistory.unshift(newConversation);
+        }
+        
+        // Keep only the most recent conversations
+        const trimmedChatHistory = chatHistory.slice(0, maxItems);
+        
+        // Save the chat history
+        localStorage.setItem(chatHistoryKey, JSON.stringify(trimmedChatHistory));
+      }
     } catch (storageError) {
       console.warn('Storage quota exceeded, reducing data size...');
       
@@ -297,7 +380,7 @@ export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
           
           // Add the new item with minimal data
           essentialHistory.unshift({
-            id: newItem.id,
+            id: generateUniqueId(), // Generate a new unique ID
             created_at: newItem.created_at,
             prompt: newItem.prompt,
             advice: newItem.advice.substring(0, 500), // Truncate advice
@@ -316,7 +399,7 @@ export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
     try {
       const user = getUser();
       const minimalItem = {
-        id: Date.now().toString(),
+        id: generateUniqueId(), // Use the same unique ID generation method
         created_at: new Date().toISOString(),
         prompt: data.prompt || '',
         advice: (data.advice || '').substring(0, 300), // Very short advice only
@@ -334,11 +417,79 @@ export const saveToHistory = (data: Partial<MentorHistoryItem>): void => {
 };
 
 // Get user history
+export const getHistory = (): MentorHistoryItem[] => {
+  const user = getUser();
+  const historyKey = user ? `mentorHistory_${user.id}` : 'mentorHistory';
+  return JSON.parse(localStorage.getItem(historyKey) || '[]');
+};
+
+export const getChatHistory = (): ChatConversation[] => {
+  const user = getUser();
+  const chatHistoryKey = user ? `chatHistory_${user.id}` : 'chatHistory';
+  return JSON.parse(localStorage.getItem(chatHistoryKey) || '[]');
+};
+
+export const deleteChatConversation = (conversationId: string): boolean => {
+  try {
+    const user = getUser();
+    const chatHistoryKey = user ? `chatHistory_${user.id}` : 'chatHistory';
+    const chatHistory = JSON.parse(localStorage.getItem(chatHistoryKey) || '[]') as ChatConversation[];
+    
+    // Find the conversation index
+    const conversationIndex = chatHistory.findIndex(c => c.id === conversationId);
+    
+    if (conversationIndex === -1) {
+      return false; // Conversation not found
+    }
+    
+    // Remove the conversation
+    chatHistory.splice(conversationIndex, 1);
+    
+    // Save the updated history
+    localStorage.setItem(chatHistoryKey, JSON.stringify(chatHistory));
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting chat conversation:', error);
+    return false;
+  }
+};
+
+// Get user history
 export const getUserHistory = (): MentorHistoryItem[] => {
   const user = getUser();
-  if (!user) {
-    return JSON.parse(localStorage.getItem('mentorHistory') || '[]') as MentorHistoryItem[];
+  const historyKey = user ? `mentorHistory_${user.id}` : 'mentorHistory';
+  
+  // Get history from localStorage
+  let history = JSON.parse(localStorage.getItem(historyKey) || '[]') as MentorHistoryItem[];
+  
+  // Check for duplicate IDs and fix them if found
+  const idSet = new Set<string>();
+  let hasFixedIds = false;
+  
+  // Create a new array with unique IDs
+  const fixedHistory = history.map(item => {
+    // If this ID is already in the set or is not valid, generate a new one
+    if (idSet.has(item.id) || !item.id) {
+      hasFixedIds = true;
+      const newId = generateUniqueId();
+      return { ...item, id: newId };
+    }
+    
+    // Otherwise, add this ID to the set and return the item unchanged
+    idSet.add(item.id);
+    return item;
+  });
+  
+  // If we fixed any IDs, save the updated history back to localStorage
+  if (hasFixedIds) {
+    try {
+      localStorage.setItem(historyKey, JSON.stringify(fixedHistory));
+      console.log('Fixed duplicate IDs in history');
+    } catch (error) {
+      console.error('Error saving fixed history:', error);
+    }
   }
   
-  return JSON.parse(localStorage.getItem(`mentorHistory_${user.id}`) || '[]') as MentorHistoryItem[];
+  return hasFixedIds ? fixedHistory : history;
 };

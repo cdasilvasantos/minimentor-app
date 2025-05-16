@@ -27,10 +27,10 @@ export default function Auth() {
       if (isSignUp) {
         await signUp(email, password, username);
         await signIn(email, password);
-        router.push("/profile");
+        router.push("/chat");
       } else {
         await signIn(email, password);
-        router.push("/profile");
+        router.push("/chat");
       }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'Authentication failed');

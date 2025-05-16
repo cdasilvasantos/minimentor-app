@@ -54,7 +54,7 @@ export default function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             <NavLink href="/" active={pathname === "/"}>Home</NavLink>
-            <NavLink href="/create" active={pathname === "/create"}>Create</NavLink>
+            <NavLink href="/chat" active={pathname === "/chat"}>Chat</NavLink>
             {isLoggedIn ? (
               <>
                 <NavLink href="/profile" active={pathname === "/profile"}>Profile</NavLink>
@@ -90,7 +90,7 @@ export default function Header() {
         {isMobileMenuOpen && (
           <nav className="md:hidden w-full mt-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 space-y-3">
             <MobileNavLink href="/" active={pathname === "/"} onClick={toggleMobileMenu}>Home</MobileNavLink>
-            <MobileNavLink href="/create" active={pathname === "/create"} onClick={toggleMobileMenu}>Create</MobileNavLink>
+            <MobileNavLink href="/chat" active={pathname === "/chat"} onClick={toggleMobileMenu}>Chat</MobileNavLink>
             {isLoggedIn ? (
               <>
                 <MobileNavLink href="/profile" active={pathname === "/profile"} onClick={toggleMobileMenu}>Profile</MobileNavLink>

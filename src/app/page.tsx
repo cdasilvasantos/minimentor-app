@@ -18,17 +18,19 @@ export default function Home() {
         </div>
 
         <div className="mb-12">
-          <Link href="/create" className="block w-full">
-            <button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 
-                              text-white font-medium py-4 px-6 rounded-xl shadow-lg hover:shadow-xl 
-                              transition duration-300 transform hover:-translate-y-1 
-                              flex items-center justify-center">
-              <span className="mr-2 text-lg">Get Your Career Action Plan</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </Link>
+          <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mt-8">
+            <Link href="/chat" className="flex-1">
+              <button className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 
+                                text-white font-medium py-4 px-6 rounded-xl shadow-lg hover:shadow-xl 
+                                transition duration-300 transform hover:-translate-y-1 
+                                flex items-center justify-center">
+                <span className="mr-2 text-lg">Start Chatting Now</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </Link>
+          </div>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8 mb-12">
